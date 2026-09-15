@@ -1,0 +1,57 @@
+name: Build Stream Deck Plugin
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "src/**"
+      - "test/**"
+      - "package.json"
+      - "DistributionTool.exe"
+      - ".github/workflows/build-plugin.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build Stream Deck package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path Release | Out-Null
+          Remove-Item "Release/com.f00d4tehg0dz.aipaints.streamDeckPlugin" -Force -ErrorAction SilentlyContinue
+          & .\DistributionTool.exe -b -i "src/com.f00d4tehg0dz.aipaints.sdPlugin" -o "Release"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (-not (Test-Path "Release/com.f00d4tehg0dz.aipaints.streamDeckPlugin")) {
+            throw "DistributionTool did not create the expected package."
+          }
+
+      - name: Commit rebuilt package
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "Release/com.f00d4tehg0dz.aipaints.streamDeckPlugin"
+          git diff --cached --quiet
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "Release package is already up to date."
+            exit 0
+          }
+          git commit -m "Build Stream Deck plugin 1.1.1"
+          git push
