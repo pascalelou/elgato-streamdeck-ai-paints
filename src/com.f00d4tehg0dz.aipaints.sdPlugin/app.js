@@ -14,7 +14,7 @@
   'use strict';
 
   const ACTION_UUID = 'com.f00d4tehg0dz.aipaints.action';
-  const GLOBAL_SETTINGS_TIMEOUT_MS = 3000;
+  const GLOBAL_SETTINGS_TIMEOUT_MS = 10000;
 
   function normalizeActionSettings(settings) {
     const value = settings && typeof settings === 'object' ? settings : {};
@@ -35,12 +35,17 @@
     const activeGenerations = new Map();
     const settingsByContext = new Map();
     let credentialWaiters = [];
+    let cachedCredentials = {
+      accountId: '',
+      apiToken: ''
+    };
 
-    function sendInspectorUpdate(context, status, image) {
+    function sendInspectorUpdate(context, status, image, details) {
       streamDeck.sendToPropertyInspector(context, {
         type: 'generationUpdate',
         status,
-        image: image || null
+        image: image || null,
+        details: details || null
       }, ACTION_UUID);
     }
 
@@ -50,12 +55,19 @@
         accountId: String(settings.cloudflareAccountId || '').trim(),
         apiToken: String(settings.cloudflareApiToken || '').trim()
       };
+
+      cachedCredentials = credentials;
+
       const waiters = credentialWaiters;
       credentialWaiters = [];
       waiters.forEach((resolve) => resolve(credentials));
     }
 
     function getFreshCredentials() {
+      if (cachedCredentials.accountId && cachedCredentials.apiToken) {
+        return Promise.resolve(cachedCredentials);
+      }
+
       return new Promise((resolve) => {
         let settled = false;
         let timeoutId;
@@ -66,7 +78,7 @@
           resolve(credentials);
         };
         credentialWaiters.push(finish);
-        timeoutId = setTimeout(() => finish({ accountId: '', apiToken: '' }), GLOBAL_SETTINGS_TIMEOUT_MS);
+        timeoutId = setTimeout(() => finish(cachedCredentials), GLOBAL_SETTINGS_TIMEOUT_MS);
         streamDeck.getGlobalSettings();
       });
     }
@@ -107,11 +119,14 @@
         return image;
       } catch (error) {
         const status = error && error.userMessage ? error.userMessage : cloudflareAI.USER_MESSAGES.generic;
-        logger.error('Cloudflare image generation failed.', {
+        const details = {
           code: error && error.code || 'UNKNOWN',
-          status: error && error.status || null
-        });
-        sendInspectorUpdate(context, status);
+          httpStatus: error && error.status || null,
+          message: error && error.message || String(error)
+        };
+
+        logger.error('Cloudflare image generation failed.', details);
+        sendInspectorUpdate(context, status, null, details);
         if (typeof streamDeck.showAlert === 'function') streamDeck.showAlert(context);
         return null;
       } finally {
