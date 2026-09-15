@@ -3,7 +3,7 @@
 	"Name": "AI Paints",
 	"Version": "2.0.0.0",
 	"Author": "Pascal Elou",
-	"URL": "https://github.com/pascalelou/Stream-Deck-AI-Plugin",
+	"URL": "https://github.com/pascalelou/elgato-streamdeck-ai-paints",
 	"Actions": [
 		{
 			"Name": "Generate",
