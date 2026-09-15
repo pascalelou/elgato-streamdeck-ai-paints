@@ -1,222 +1,113 @@
 /// <reference path="../../../libs/js/property-inspector.js" />
-/// <reference path="../../../libs/js/utils.js" />
-let activeTab = null;
-// Establish WebSocket connection to app.js
-var websocket = null;
+const ACTION_UUID = 'com.f00d4tehg0dz.aipaints.action';
+let actionSettings = { positivePrompt: '', negativePrompt: '', lastImage: '' };
+let isGenerating = false;
 
-// viewImage function
+function element(id) {
+    return document.getElementById(id);
+}
+
+function setStatus(message) {
+    const status = element('currentText');
+    status.textContent = message || '';
+    status.style.display = message ? 'block' : 'none';
+}
+
+function showImage(image) {
+    if (!image) return;
+    const imageElement = element('currentImage');
+    const viewButton = element('viewButton');
+    imageElement.src = image;
+    imageElement.style.display = 'block';
+    viewButton.style.display = 'block';
+    viewButton.onclick = () => viewImage(image);
+}
+
 function viewImage(imageUrl) {
-    // Get the current window's position and size
-    const currentWindow = window;
-    const screenLeft = window.screenLeft || window.screenX;
-    const screenTop = window.screenTop || window.screenY;
-    
-    // Calculate center position for the new window
-    const width = 1920; // 1024 + some padding
-    const height = 1080;
-    const left = screenLeft + (window.outerWidth - width) / 2;
-    const top = screenTop + (window.outerHeight - height) / 2;
-
-    // Open the popup window with the image
+    const width = 960;
+    const height = 720;
+    const left = (window.screenLeft || window.screenX || 0) + (window.outerWidth - width) / 2;
+    const top = (window.screenTop || window.screenY || 0) + (window.outerHeight - height) / 2;
     const popupUrl = `popup.html?image=${encodeURIComponent(imageUrl)}`;
-    window.open(
-        popupUrl,
-        'GeneratedImage',
-        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
-    );
+    window.open(popupUrl, 'GeneratedImage', `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`);
 }
 
-// Triggered when the plugin is connected to the Stream Deck
-$PI.onConnected((jsn) => {
-    const { actionInfo, appInfo, connection, messageType, port, uuid } = jsn;
-    const { payload, context } = actionInfo;
-    const { settings } = payload;
-    const cachedPositivePrompt = localStorage.getItem('positivePromptInspector');
-    const cachedNegativePrompt = localStorage.getItem('negativePromptInspector');
-    const cachedBase64Image = localStorage.getItem('base64ImageInspector');
-    const cachedHuggingFaceKey = localStorage.getItem('huggingFaceKeyInspector');
-    const cachedModel = localStorage.getItem('modelSelectionInspector');
-
-    const imageElement = document.getElementById('currentImage');
-    const positivePromptInput = document.getElementById('positivePrompt');
-    const negativePromptInput = document.getElementById('negativePrompt');
-    const huggingFaceKeyInput = document.getElementById('huggingFaceKey');
-    const modelSelect = document.getElementById('modelSelection');
-
-    if (cachedBase64Image && imageElement) {
-        imageElement.src = cachedBase64Image;
-        imageElement.style.display = 'block';
-        
-        // Show view button for cached images
-        const viewButton = document.getElementById('viewButton');
-        viewButton.style.display = 'block';
-        viewButton.onclick = () => {
-            viewImage(cachedBase64Image);
-        };
-    }
-
-    if (cachedPositivePrompt && positivePromptInput) {
-        positivePromptInput.value = cachedPositivePrompt;
-    }
-
-    if (cachedNegativePrompt && negativePromptInput) {
-        negativePromptInput.value = cachedNegativePrompt;
-    }
-
-    if (cachedHuggingFaceKey && huggingFaceKeyInput) {
-        huggingFaceKeyInput.value = cachedHuggingFaceKey;
-    }
-
-    if (cachedModel && modelSelect) {
-        modelSelect.value = cachedModel;
-    }
-});
-
-$PI.onDidReceiveGlobalSettings((payload) => {
-    // Handle the received payload here
-    if (payload.payload.settings.action === 'sendImage') {
-        const imageElement = document.getElementById('currentImage');
-        const viewButton = document.getElementById('viewButton');
-        
-        imageElement.src = payload.payload.settings.image;
-        imageElement.style.display = 'block';
-        
-        // Show view button and set up click handler
-        viewButton.style.display = 'block';
-        viewButton.onclick = () => {
-            viewImage(payload.payload.settings.image);
-        };
-        
-        localStorage.setItem('base64ImageInspector', payload.payload.settings.image);
-    }
-    if (payload.payload.settings.action === 'sendText') {
-        const textElement = document.getElementById('currentText');
-        textElement.innerHTML = payload.payload.settings.text;
-        textElement.style.display = 'block';
-    }
-    if (payload.payload.settings.action === 'sendInputText') {
-        const positiveTextElement = document.getElementById('positivePrompt');
-        const negativeTextElement = document.getElementById('negativePrompt');
-        positiveTextElement.value = payload.payload.settings.text.positive;
-        negativeTextElement.value = payload.payload.settings.text.negative;
-        localStorage.setItem('positivePromptInspector', positiveTextElement.value);
-        localStorage.setItem('negativePromptInspector', negativeTextElement.value);
-    }
-});
-
-// Event listener for the Github button
-document.querySelector('#github').addEventListener('click', () => {
-    $PI.openUrl('https://github.com/f00d4tehg0dz/elgato-streamdeck-ai-paints');
-});
-
-function connectElgatoStreamDeckSocket(inPort, uuid, messageType, appInfoString, actionInfo) {
-    websocket = new WebSocket(`ws://127.0.0.1:${inPort}`);
-    const delay = window?.initialConnectionDelay || 0;
-    setTimeout(() => {
-        $PI.connect(inPort, uuid, messageType, appInfoString, actionInfo);
-        // const jsonObject = JSON.parse(actionInfo);
-        // console.log(jsonObject)
-        // const positivePrompt = jsonObject.payload.settings.positive;
-        // const negativePrompt = jsonObject.payload.settings.negative;
-        // const base64Image = jsonObject.payload.settings.base64Image;
-
-        const cachedPositivePrompt = localStorage.getItem('positivePromptInspector');
-        const cachedNegativePrompt = localStorage.getItem('negativePromptInspector');
-        const cachedBase64Image = localStorage.getItem('base64ImageInspector');
-        const cachedHuggingFaceKey = localStorage.getItem('huggingFaceKeyInspector');
-        const cachedModel = localStorage.getItem('modelSelectionInspector');
-
-        const imageElement = document.getElementById('currentImage');
-        const positivePromptInput = document.getElementById('positivePrompt');
-        const negativePromptInput = document.getElementById('negativePrompt');
-        const huggingFaceKeyInput = document.getElementById('huggingFaceKey');
-        const modelSelect = document.getElementById('modelSelection');
-
-        if (cachedBase64Image && imageElement) {
-            imageElement.src = cachedBase64Image;
-            imageElement.style.display = 'block';
-            
-            // Show view button for cached images
-            const viewButton = document.getElementById('viewButton');
-            viewButton.style.display = 'block';
-            viewButton.onclick = () => {
-                viewImage(cachedBase64Image);
-            };
-        }
-
-        if (cachedPositivePrompt && positivePromptInput) {
-            positivePromptInput.value = cachedPositivePrompt;
-        }
-
-        if (cachedNegativePrompt && negativePromptInput) {
-            negativePromptInput.value = cachedNegativePrompt;
-        }
-
-        if (cachedHuggingFaceKey && huggingFaceKeyInput) {
-            huggingFaceKeyInput.value = cachedHuggingFaceKey;
-        }
-
-        if (cachedModel && modelSelect) {
-            modelSelect.value = cachedModel;
-        }
-
-        // Event listener for the Update button
-        document.querySelector('#update').addEventListener('click', (event) => {
-            event.preventDefault(); // Prevent the default form submission behavior
-
-            const positivePrompt = document.getElementById('positivePrompt').value;
-            const negativePrompt = document.getElementById('negativePrompt').value;
-            const huggingFaceKey = document.getElementById('huggingFaceKey').value;
-            const selectedModel = document.getElementById('modelSelection').value;
-
-            // Store values in localStorage
-            localStorage.setItem('huggingFaceKeyInspector', huggingFaceKey);
-            localStorage.setItem('modelSelectionInspector', selectedModel);
-
-            const payload = {
-                positivePrompt,
-                negativePrompt,
-                huggingFaceKey,
-                selectedModel
-            };
-
-            $PI.sendToPlugin(payload);
-        });
-    }, delay);
+function readPrompts() {
+    return {
+        positivePrompt: element('positivePrompt').value.trim(),
+        negativePrompt: element('negativePrompt').value.trim()
+    };
 }
 
-// Activate and handle tabs
-function activateTabs(activeTab) {
-    const allTabs = Array.from(document.querySelectorAll('.tab'));
-    let activeTabEl = null;
-    allTabs.forEach((el, i) => {
-        el.onclick = () => clickTab(el);
-        if (el.dataset?.target === activeTab) {
-            activeTabEl = el;
-        }
+function readCredentials() {
+    return {
+        cloudflareAccountId: element('cloudflareAccountId').value.trim(),
+        cloudflareApiToken: element('cloudflareApiToken').value.trim()
+    };
+}
+
+function saveGlobalCredentials() {
+    $PI.setGlobalSettings(readCredentials());
+}
+
+$PI.onConnected((event) => {
+    const settings = event.actionInfo && event.actionInfo.payload && event.actionInfo.payload.settings || {};
+    actionSettings = {
+        positivePrompt: settings.positivePrompt || settings.positive || '',
+        negativePrompt: settings.negativePrompt || settings.negative || '',
+        lastImage: settings.lastImage || settings.base64Image || ''
+    };
+    element('positivePrompt').value = actionSettings.positivePrompt;
+    element('negativePrompt').value = actionSettings.negativePrompt;
+    showImage(actionSettings.lastImage);
+    $PI.getGlobalSettings();
+});
+
+$PI.onDidReceiveGlobalSettings((event) => {
+    const settings = event.payload && event.payload.settings || {};
+    element('cloudflareAccountId').value = settings.cloudflareAccountId || '';
+    element('cloudflareApiToken').value = settings.cloudflareApiToken || '';
+});
+
+$PI.onSendToPropertyInspector(ACTION_UUID, (event) => {
+    const payload = event.payload || {};
+    if (payload.type !== 'generationUpdate') return;
+    setStatus(payload.status || '');
+    showImage(payload.image);
+    isGenerating = payload.status === 'Generating image...';
+    element('update').disabled = isGenerating;
+    if (payload.image) actionSettings.lastImage = payload.image;
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    element('github').addEventListener('click', () => {
+        $PI.openUrl('https://github.com/f00d4tehg0dz/elgato-streamdeck-ai-paints');
     });
-    if (activeTabEl) {
-        clickTab(activeTabEl);
-    } else if (allTabs.length) {
-        clickTab(allTabs[0]);
-    }
-}
 
-// Handle the click event of a tab
-function clickTab(clickedTab) {
-    const allTabs = Array.from(document.querySelectorAll('.tab'));
-    allTabs.forEach((el, i) => el.classList.remove('selected'));
-    clickedTab.classList.add('selected');
-    activeTab = clickedTab.dataset?.target;
-    allTabs.forEach((el, i) => {
-        if (el.dataset.target) {
-            const t = document.querySelector(el.dataset.target);
-            if (t) {
-                t.style.display = el == clickedTab ? 'block' : 'none';
-            }
+    element('cloudflareAccountId').addEventListener('change', saveGlobalCredentials);
+    element('cloudflareApiToken').addEventListener('change', saveGlobalCredentials);
+
+    element('update').addEventListener('click', (event) => {
+        event.preventDefault();
+        if (isGenerating) return;
+
+        const prompts = readPrompts();
+        const credentials = readCredentials();
+        if (!credentials.cloudflareAccountId || !credentials.cloudflareApiToken) {
+            setStatus('Cloudflare credentials missing.');
+            return;
         }
-    });
-}
+        if (!prompts.positivePrompt) {
+            setStatus('Prompt is required.');
+            return;
+        }
 
-// Activate the tabs
-activateTabs();
+        actionSettings = { ...actionSettings, ...prompts };
+        $PI.setSettings(actionSettings);
+        $PI.setGlobalSettings(credentials);
+        $PI.sendToPlugin({ type: 'generate', ...prompts });
+        isGenerating = true;
+        element('update').disabled = true;
+        setStatus('Generating image...');
+    });
+});

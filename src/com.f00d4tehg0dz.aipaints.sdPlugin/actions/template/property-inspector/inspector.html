@@ -48,16 +48,12 @@
             <!-- Tab 1: Prompts -->
             <div id="tab1" class="tab-container">
                 <div class="sdpi-item">
-                    <div class="sdpi-item-label">Hugging Face API Key (Optional)</div>
-                    <input class="sdpi-item-value" id="huggingFaceKey" type="password" placeholder="Enter your Hugging Face API key">
+                    <div class="sdpi-item-label">Cloudflare Account ID</div>
+                    <input class="sdpi-item-value" id="cloudflareAccountId" type="text" autocomplete="off" placeholder="Enter your Account ID">
                 </div>
-                
                 <div class="sdpi-item">
-                    <div class="sdpi-item-label">Model Selection (Optional)</div>
-                    <select class="sdpi-item-value select" id="modelSelection">
-                        <option value="flux">FLUX</option>
-                        <option value="sd">Stable Diffusion</option>
-                    </select>
+                    <div class="sdpi-item-label">Cloudflare API Token</div>
+                    <input class="sdpi-item-value" id="cloudflareApiToken" type="password" autocomplete="off" placeholder="Enter your API token">
                 </div>
                 <div class="sdpi-item">
                     <div data-localize class="sdpi-item-label" title="Positive Prompt">What to generate</div>
@@ -69,7 +65,7 @@
                 </div>
                 <div class="sdpi-item">
                     <div class="sdpi-item-label">Generate Image</div>
-                    <button class="sdpi-item-value" value="update" id="update">Generate</button>
+                    <button class="sdpi-item-value" type="button" value="update" id="update">Generate</button>
                </div>
 
                 <!-- Hidden elements for storing image information -->
@@ -94,11 +90,11 @@
             <div id="tab2" class="tab-container">
                 <div class="sdpi-item">
                     <div data-localize class="sdpi-item-label" title="Instructions">Instructions</div>
-                    <p>Fill in what to generate and what to exclude, then click Generate to begin!<br>
+                    <p>Enter your Cloudflare credentials, fill in what to generate and optionally what to exclude, then click Generate.<br>
                         New generated images will refresh from your existing prompts when you press the key on your
                         StreamDeck.<br>
                     </p>
-                    <p> If you have a Hugging Face API key, you can enter it in the field above to choose the model you want to use. Otherwise, the image will be generated with StableDiffusion.
+                    <p>Credentials are shared by all AI Paints keys. Prompts and generated images are saved separately for each key. Images use FLUX.2 Klein 4B at 512 × 512.</p>
                 </div>
                 <div class="sdpi-item">
                     <div data-localize class="sdpi-item-label" title="Example">Example</div>

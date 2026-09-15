@@ -1,42 +1,39 @@
-# elgato-streamdeck-ai-paints
- StreamDeck plugin for AI Paints
+# AI Paints for Stream Deck
 
-## Description
+AI Paints generates a new image from a prompt when you click **Generate** in the Property Inspector or press its Stream Deck key. Version 1.1 calls Cloudflare Workers AI directly—no local service or intermediary image-generation server is required.
 
-`Stream Deck Plugin AI Paints`
-
-Unleash your creativity with our AI-powered image generator powered by Stable Diffusion technology! With just two simple questions, you can bring any image to life. Our app offers the following features:
-
-* State-of-the-art AI technology for generative imagery
-* Easy and intuitive user interface
-* Quick generation of existing prompts with a single tap
-* Endless possibilities for creating unique and inspiring images
+The fixed model is `@cf/black-forest-labs/flux-2-klein-4b`, and images are generated at 512 × 512 pixels.
 
 ## Installation
 
-Download from [Release Folder](Release/com.f00d4tehg0dz.aipaints.streamDeckPlugin)
+Download the plugin package from the `Release` folder, then double-click it to install it in Stream Deck. Restart or reload Stream Deck after replacing an existing installation.
 
-Double-click to install to StreamDeck.
+## Cloudflare Workers AI setup
 
-## Demo
+1. Sign in to the [Cloudflare dashboard](https://dash.cloudflare.com/).
+2. Open **Workers AI**, then choose **Use REST API**.
+3. Copy your **Account ID**.
+4. Create a token with Cloudflare's **Workers AI API Token** template. For a custom token, Cloudflare's current REST API guide requires only **Workers AI - Read** and **Workers AI - Edit**; scope both permissions to the relevant account.
+5. Add AI Paints to a Stream Deck key and open its Property Inspector.
+6. Enter the Account ID and token. These credentials are stored in Stream Deck Global Settings and shared by all AI Paints keys.
+7. Enter a prompt, optionally enter content to avoid, and click **Generate**.
 
-![](https://github.com/f00d4tehg0dz/elgato-streamdeck-ai-paints/blob/main/screenshot/ai-paints.gif?raw=true)
+Each key keeps its own prompts and last generated image in its action settings. After Stream Deck restarts, AI Paints restores that image without making a new API request. Pressing the key generates a fresh image.
 
-### Clone the repo
+AI Paints requires no local infrastructure and generates images directly through the Cloudflare Workers AI REST API. Credentials are never placed in per-key settings or application logs.
 
-```git clone https://github.com/f00d4tehg0dz/elgato-streamdeck-ai-paints```
+## Development
 
-### Get the latest library
+The plugin retains the bundled legacy JavaScript Stream Deck SDK used by the original project. The source plugin is in `src/com.f00d4tehg0dz.aipaints.sdPlugin`.
 
-You can clone the javascript library or add it as a submodule to your repository.
+Run the dependency-free test suite with:
 
-#### Clone
+```sh
+npm test
+```
 
-```git clone https://github.com/elgatosf/streamdeck-javascript-sdk src/my.domain.plugin-name/libs```
+## Changelog
 
-#### Add Submodule
+### 1.1.0
 
-```git submodule add https://github.com/elgatosf/streamdeck-javascript-sdk src/my.domain.plugin-name/libs```
-
-#### Compile for Distribution
-```C:\Users\xxx\Downloads\DistributionTool.exe -b -i C:\Users\xxx\OneDrive\Documents\GitHub\elgato-streamdeck-ai-paints\src\com.f00d4tehg0dz.aipaints.sdPlugin -o C:\Users\xxx\OneDrive\Documents\GitHub\elgato-streamdeck-ai-paints\Release```
+Replace deprecated Hugging Face/f00d.me image generation backend with Cloudflare Workers AI using FLUX.2 Klein 4B. These former services are mentioned here only to document the migration; the plugin contains no code that contacts them.

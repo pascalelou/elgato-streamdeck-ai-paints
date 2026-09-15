@@ -1,6 +1,6 @@
 {
 	"Name": "AI Paints",
-	"Version": "1.0.6.0",
+	"Version": "1.1.0.0",
 	"Author": "f00d4tehg0dz",
 	"Actions": [
 		{
@@ -30,7 +30,7 @@
 	"Category": "AI Paints",
 	"CategoryIcon": "actions/template/assets/category",
 	"CodePath": "app.html",
-	"Description": "Create AI generated images with a click of a button!",
+	"Description": "Generate images directly with Cloudflare Workers AI and FLUX.2 Klein 4B.",
 	"Icon": "actions/template/assets/action",
 	"SDKVersion": 2,
 	"Software": {
