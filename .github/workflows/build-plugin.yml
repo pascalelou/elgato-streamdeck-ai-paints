@@ -1,0 +1,106 @@
+name: Build Stream Deck Plugin
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "src/**"
+      - "test/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+      - "rollup.config.mjs"
+      - "eslint.config.js"
+      - ".github/workflows/build-plugin.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "src/**"
+      - "test/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+      - "rollup.config.mjs"
+      - "eslint.config.js"
+      - ".github/workflows/build-plugin.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build plugin
+        run: npm run build
+
+      - name: Validate Stream Deck plugin
+        run: npm run validate
+
+      - name: Package Stream Deck plugin
+        run: npm run pack
+
+      - name: Verify package contents
+        shell: pwsh
+        run: |
+          $package = "Release/com.f00d4tehg0dz.aipaints.streamDeckPlugin"
+          if (-not (Test-Path -LiteralPath $package)) {
+            throw "Stream Deck CLI did not create the expected package."
+          }
+
+          $entries = @(tar -tf $package)
+          if ($LASTEXITCODE -ne 0) {
+            throw "Unable to inspect the Stream Deck package."
+          }
+
+          $root = "com.f00d4tehg0dz.aipaints.sdPlugin/"
+          $required = @(
+            "manifest.json",
+            "bin/plugin.js",
+            "bin/package.json",
+            "actions/",
+            "ui/inspector.html",
+            "ui/inspector.js",
+            "ui/popup.html"
+          )
+          foreach ($entry in $required) {
+            $expected = "$root$entry"
+            $present = if ($entry.EndsWith("/")) {
+              @($entries | Where-Object { $_.StartsWith($expected) }).Count -gt 0
+            } else {
+              $entries -contains $expected
+            }
+            if (-not $present) {
+              throw "Package is missing required entry: $entry"
+            }
+          }
+
+      - name: Upload Stream Deck package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-paints-v2.0.0-alpha.1
+          path: Release/com.f00d4tehg0dz.aipaints.streamDeckPlugin
+          if-no-files-found: error

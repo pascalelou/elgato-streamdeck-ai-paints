@@ -1,14 +1,16 @@
 {
+	"$schema": "https://schemas.elgato.com/streamdeck/plugins/manifest.json",
 	"Name": "AI Paints",
-	"Version": "1.0.6.0",
-	"Author": "f00d4tehg0dz",
+	"Version": "2.0.0.0",
+	"Author": "Pascal Elou",
+	"URL": "https://github.com/pascalelou/Stream-Deck-AI-Plugin",
 	"Actions": [
 		{
 			"Name": "Generate",
 			"UUID": "com.f00d4tehg0dz.aipaints.action",
 			"Icon": "actions/template/assets/actionimage",
 			"Tooltip": "Install me for AI Generative actions",
-			"PropertyInspectorPath": "actions/template/property-inspector/inspector.html",
+			"PropertyInspectorPath": "ui/inspector.html",
 			"Controllers": [
 				"Keypad",
 				"Encoder"
@@ -29,17 +31,17 @@
 	],
 	"Category": "AI Paints",
 	"CategoryIcon": "actions/template/assets/category",
-	"CodePath": "app.html",
-	"Description": "Create AI generated images with a click of a button!",
+	"CodePath": "bin/plugin.js",
+	"Description": "Generate images on Stream Deck with Cloudflare Workers AI and FLUX.2 Klein 4B.",
 	"Icon": "actions/template/assets/action",
-	"SDKVersion": 2,
+	"SDKVersion": 3,
 	"Software": {
-		"MinimumVersion": "6.4"
+		"MinimumVersion": "7.1"
 	},
 	"OS": [
 		{
 			"Platform": "mac",
-			"MinimumVersion": "10.15"
+			"MinimumVersion": "12"
 		},
 		{
 			"Platform": "windows",
@@ -47,7 +49,7 @@
 		}
 	],
 	"Nodejs": {
-		"Version": "20",
+		"Version": "24",
 		"Debug": "enabled"
 	},
 	"UUID": "com.f00d4tehg0dz.aipaints"
