@@ -2,7 +2,7 @@
 	"$schema": "https://schemas.elgato.com/streamdeck/plugins/manifest.json",
 	"Name": "AI Paints",
 	"Version": "2.0.0.0",
-	"Author": "Pascal Elou",
+	"Author": "pascalelou",
 	"URL": "https://github.com/pascalelou/elgato-streamdeck-ai-paints",
 	"SupportURL": "https://github.com/pascalelou/elgato-streamdeck-ai-paints/issues",
 	"Actions": [
