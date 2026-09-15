@@ -7,10 +7,23 @@ function element(id) {
     return document.getElementById(id);
 }
 
-function setStatus(message) {
+function setStatus(message, details) {
     const status = element('currentText');
-    status.textContent = message || '';
-    status.style.display = message ? 'block' : 'none';
+    let text = message || '';
+
+    if (details) {
+        const lines = [];
+        if (details.code) lines.push(`Code: ${details.code}`);
+        if (details.httpStatus) lines.push(`HTTP: ${details.httpStatus}`);
+        if (details.message && details.message !== message) {
+            lines.push(`Details: ${details.message}`);
+        }
+        if (lines.length) text += `\n\n${lines.join('\n')}`;
+    }
+
+    status.textContent = text.trim();
+    status.style.whiteSpace = 'pre-wrap';
+    status.style.display = text ? 'block' : 'none';
 }
 
 function showImage(image) {
@@ -72,7 +85,7 @@ $PI.onDidReceiveGlobalSettings((event) => {
 $PI.onSendToPropertyInspector(ACTION_UUID, (event) => {
     const payload = event.payload || {};
     if (payload.type !== 'generationUpdate') return;
-    setStatus(payload.status || '');
+    setStatus(payload.status || '', payload.details || null);
     showImage(payload.image);
     isGenerating = payload.status === 'Generating image...';
     element('update').disabled = isGenerating;
