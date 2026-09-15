@@ -34,6 +34,13 @@ npm test
 
 ## Changelog
 
+### 1.1.1
+
+- Cache Cloudflare credentials in the plugin runtime so physical key presses do not depend on a fresh Global Settings round-trip each time.
+- Increase the Global Settings fallback timeout from 3 seconds to 10 seconds.
+- Surface structured generation errors in the Property Inspector, including the plugin error code, HTTP status when available, and a safe error message.
+- Keep Cloudflare credentials out of diagnostics.
+
 ### 1.1.0
 
 Replace deprecated Hugging Face/f00d.me image generation backend with Cloudflare Workers AI using FLUX.2 Klein 4B. These former services are mentioned here only to document the migration; the plugin contains no code that contacts them.
