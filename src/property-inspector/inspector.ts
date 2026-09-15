@@ -110,7 +110,7 @@ declare global {
 document.addEventListener("DOMContentLoaded", () => {
   byId<HTMLInputElement>("cloudflareAccountId").addEventListener("change", saveCredentials);
   byId<HTMLInputElement>("cloudflareApiToken").addEventListener("change", saveCredentials);
-  byId<HTMLButtonElement>("github").addEventListener("click", () => send("openUrl", { url: "https://github.com/pascalelou/Stream-Deck-AI-Plugin" }));
+  byId<HTMLButtonElement>("github").addEventListener("click", () => send("openUrl", { url: "https://github.com/pascalelou/elgato-streamdeck-ai-paints" }));
   byId<HTMLButtonElement>("generate").addEventListener("click", () => {
     const credentials = readCredentials();
     const positivePrompt = byId<HTMLInputElement>("positivePrompt").value.trim();
