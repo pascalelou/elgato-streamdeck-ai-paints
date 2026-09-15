@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>AI Paints</title>
+  <style>
+    :root { color-scheme: dark; font: 12px system-ui, sans-serif; }
+    body { margin: 0; color: #ddd; background: #2d2d2d; }
+    main { padding: 12px; }
+    label { display: grid; grid-template-columns: 112px 1fr; align-items: center; gap: 8px; margin: 8px 0; }
+    input, button { min-width: 0; box-sizing: border-box; border: 1px solid #555; border-radius: 3px; color: #eee; background: #3b3b3b; padding: 6px 8px; }
+    input:focus, button:focus-visible { outline: 2px solid #2d7ff9; outline-offset: 1px; }
+    button { cursor: pointer; }
+    button:hover:not(:disabled) { background: #4a4a4a; }
+    button:disabled { cursor: wait; opacity: .6; }
+    .primary { width: 100%; margin-top: 8px; background: #2d7ff9; border-color: #2d7ff9; }
+    .primary:hover:not(:disabled) { background: #1e6ad8; }
+    #currentText { margin: 12px 0; white-space: pre-wrap; text-align: center; }
+    .preview { display: grid; place-items: center; gap: 8px; }
+    #currentImage { width: 144px; height: 144px; object-fit: cover; border-radius: 4px; }
+    details { margin-top: 16px; border-top: 1px solid #555; padding-top: 10px; }
+    summary { cursor: pointer; }
+    a, .link { color: #74a9ff; background: transparent; border: 0; padding: 0; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <main>
+    <label><span>Cloudflare Account ID</span><input id="cloudflareAccountId" autocomplete="off" placeholder="Enter your Account ID"></label>
+    <label><span>Cloudflare API Token</span><input id="cloudflareApiToken" type="password" autocomplete="off" placeholder="Enter your API token"></label>
+    <label><span>What to generate</span><input id="positivePrompt"></label>
+    <label><span>What to exclude</span><input id="negativePrompt"></label>
+    <button class="primary" id="generate" type="button">Generate</button>
+    <div id="currentText" role="status" aria-live="polite" hidden></div>
+    <div class="preview">
+      <img id="currentImage" alt="Last generated image" hidden>
+      <button id="viewImage" type="button" hidden>View Image</button>
+    </div>
+    <details>
+      <summary>Instructions</summary>
+      <p>Enter your Cloudflare credentials, describe the image, then select Generate. Credentials are shared by all AI Paints keys; prompts and the last image remain specific to each key.</p>
+      <button class="link" id="github" type="button">GitHub page</button>
+    </details>
+  </main>
+  <script src="inspector.js"></script>
+</body>
+</html>

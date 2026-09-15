@@ -1,12 +1,12 @@
 # AI Paints for Stream Deck
 
-AI Paints generates a new image from a prompt when you click **Generate** in the Property Inspector or press its Stream Deck key. Version 1.1 calls Cloudflare Workers AI directly—no local service or intermediary image-generation server is required.
+AI Paints generates a new image from a prompt when you click **Generate** in the Property Inspector or press its Stream Deck key. Version 2 uses Elgato's modern TypeScript/Node.js SDK and calls Cloudflare Workers AI directly—no local service or intermediary image-generation server is required.
 
 The fixed model is `@cf/black-forest-labs/flux-2-klein-4b`, and images are generated at 512 × 512 pixels.
 
 ## Installation
 
-Download the plugin package from the `Release` folder, then double-click it to install it in Stream Deck. Restart or reload Stream Deck after replacing an existing installation.
+Download the plugin package from the `Release` folder, then double-click it to install it in Stream Deck. Version 2 requires Stream Deck 7.1 or newer. Installing it over V1 preserves existing action UUIDs, prompts, shared credentials, and last generated images.
 
 ## Cloudflare Workers AI setup
 
@@ -24,15 +24,44 @@ AI Paints requires no local infrastructure and generates images directly through
 
 ## Development
 
-The plugin retains the bundled legacy JavaScript Stream Deck SDK used by the original project. The source plugin is in `src/com.f00d4tehg0dz.aipaints.sdPlugin`.
+The TypeScript source is under `src/`; Rollup produces the Node.js backend in `src/com.f00d4tehg0dz.aipaints.sdPlugin/bin` and the Property Inspector bundle in `src/com.f00d4tehg0dz.aipaints.sdPlugin/ui`. The legacy browser SDK is no longer used.
 
-Run the dependency-free test suite with:
+Development, testing, and packaging require Node.js 24 or newer. The plugin uses `@elgato/streamdeck` 2.x, Stream Deck SDK 3, and the official Stream Deck CLI.
+
+Install the pinned development tooling and run the full validation suite with:
 
 ```sh
-npm test
+npm ci
+npm run check
+npm run pack
 ```
 
 ## Changelog
+
+### 2.0.0-alpha.1
+
+- Replace the legacy HTML/JavaScript runtime with a TypeScript Node.js backend and `@elgato/streamdeck`.
+- Add a typed `GenerateAction` for keys, dials, touch taps, settings updates, and Property Inspector messages.
+- Isolate Cloudflare image generation behind a testable service with abortable network and generation timeouts.
+- Preserve V1 action settings (`positive`, `negative`, `base64Image`) and Global Settings credentials.
+- Add explicit per-action generation states and reject duplicate requests for the same action.
+- Replace `$PI` with a standalone modern WebSocket Property Inspector while retaining the existing workflow.
+- Add sanitized structured logging and comprehensive TypeScript tests.
+- Move packaging and CI to typecheck, lint, test, build, validate, and pack stages.
+
+### 1.1.3
+
+- Modernize the Stream Deck plugin build and packaging process.
+- Replace the legacy DistributionTool with the official Stream Deck CLI.
+- Add manifest validation during CI builds.
+- Update development and GitHub Actions tooling.
+- Update project metadata and repository links.
+- Make no functional changes to image generation.
+
+### 1.1.2
+
+- Restore the bundled Stream Deck JavaScript SDK files to source control so clean CI builds contain the runtime and Property Inspector dependencies.
+- Add packaging asset tests to prevent publishing an incomplete plugin again.
 
 ### 1.1.1
 

@@ -6,6 +6,6 @@ com.elgato.template.streamDeckPlugin
 .history
 __exclude
 .editorconfig
-src/com.f00d4tehg0dz.aipaints.sdPlugin/libs/
 /node_modules
-package-lock.json
+/coverage
+*.streamDeckPlugin
