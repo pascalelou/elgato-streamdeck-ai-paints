@@ -1,0 +1,113 @@
+name: Publish Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish (for example: 2.0.0-alpha.1 or 2.0.0)"
+        required: true
+        default: "2.0.0-alpha.1"
+        type: string
+      prerelease:
+        description: "Publish as a pre-release"
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.ref_name == 'main'
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Verify requested version
+        shell: pwsh
+        run: |
+          $requested = "${{ inputs.version }}"
+          $package = Get-Content package.json -Raw | ConvertFrom-Json
+          $manifest = Get-Content "src/com.f00d4tehg0dz.aipaints.sdPlugin/manifest.json" -Raw | ConvertFrom-Json
+
+          if ($package.version -ne $requested) {
+            throw "Requested version '$requested' does not match package.json version '$($package.version)'. Update the project version before publishing."
+          }
+
+          $stableVersion = ($requested -split '-')[0]
+          $manifestParts = $manifest.Version -split '\.'
+          $manifestBase = ($manifestParts[0..2] -join '.')
+          if ($manifestBase -ne $stableVersion) {
+            throw "manifest.json version '$($manifest.Version)' does not match release version '$requested'."
+          }
+
+          git ls-remote --exit-code --tags origin "refs/tags/$requested" *> $null
+          if ($LASTEXITCODE -eq 0) {
+            throw "Tag '$requested' already exists."
+          }
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build plugin
+        run: npm run build
+
+      - name: Validate Stream Deck plugin
+        run: npm run validate
+
+      - name: Package Stream Deck plugin
+        run: npm run pack
+
+      - name: Verify package
+        shell: pwsh
+        run: |
+          $package = "Release/com.f00d4tehg0dz.aipaints.streamDeckPlugin"
+          if (-not (Test-Path -LiteralPath $package)) {
+            throw "Expected Stream Deck package was not created."
+          }
+          Write-Host "Release asset ready: $package"
+
+      - name: Publish pre-release
+        if: ${{ inputs.prerelease }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ inputs.version }}" `
+            "Release/com.f00d4tehg0dz.aipaints.streamDeckPlugin#AI Paints Stream Deck plugin" `
+            --target "$env:GITHUB_SHA" `
+            --title "Version ${{ inputs.version }} Release" `
+            --generate-notes `
+            --prerelease
+
+      - name: Publish stable release
+        if: ${{ !inputs.prerelease }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ inputs.version }}" `
+            "Release/com.f00d4tehg0dz.aipaints.streamDeckPlugin#AI Paints Stream Deck plugin" `
+            --target "$env:GITHUB_SHA" `
+            --title "Version ${{ inputs.version }} Release" `
+            --generate-notes
