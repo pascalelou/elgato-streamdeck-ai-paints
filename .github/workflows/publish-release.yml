@@ -24,12 +24,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -46,16 +46,25 @@ jobs:
           }
 
           $stableVersion = ($requested -split '-')[0]
-          $manifestParts = $manifest.Version -split '\.'
+          $manifestParts = [string]$manifest.Version -split '\.'
+          if ($manifestParts.Count -lt 3) {
+            throw "manifest.json version '$($manifest.Version)' is not a valid Stream Deck version."
+          }
+
           $manifestBase = ($manifestParts[0..2] -join '.')
           if ($manifestBase -ne $stableVersion) {
             throw "manifest.json version '$($manifest.Version)' does not match release version '$requested'."
           }
 
-          git ls-remote --exit-code --tags origin "refs/tags/$requested" *> $null
-          if ($LASTEXITCODE -eq 0) {
+          $existingTag = git tag --list "$requested"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Unable to inspect Git tags."
+          }
+          if ($existingTag) {
             throw "Tag '$requested' already exists."
           }
+
+          Write-Host "Version check passed: package=$($package.version), manifest=$($manifest.Version), tag '$requested' is available."
 
       - name: Install dependencies
         run: npm ci
