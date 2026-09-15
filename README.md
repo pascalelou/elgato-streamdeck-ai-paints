@@ -6,7 +6,7 @@ The fixed model is `@cf/black-forest-labs/flux-2-klein-4b`, and images are gener
 
 ## Installation
 
-Download the plugin package from the `Release` folder, then double-click it to install it in Stream Deck. Version 2 requires Stream Deck 7.1 or newer. Installing it over V1 preserves existing action UUIDs, prompts, shared credentials, and last generated images.
+Download the latest `.streamDeckPlugin` package from the repository's **Releases** page, then double-click it to install it in Stream Deck. Version 2 requires Stream Deck 7.1 or newer. Installing it over V1 preserves existing action UUIDs, prompts, shared credentials, and last generated images.
 
 ## Cloudflare Workers AI setup
 
@@ -35,6 +35,18 @@ npm ci
 npm run check
 npm run pack
 ```
+
+## Publishing releases
+
+GitHub Releases are published by the **Publish Release** workflow.
+
+1. Update the version in `package.json` and the corresponding numeric version in `manifest.json`.
+2. Merge the version change into `main`.
+3. Open the repository's **Actions** tab and select **Publish Release**.
+4. Select **Run workflow**, enter the version (for example `2.0.0-alpha.1`), and choose whether it is a pre-release.
+5. The workflow installs dependencies, runs typecheck, lint and tests, builds and validates the plugin, packages the `.streamDeckPlugin`, creates the Git tag and GitHub Release, generates release notes, and uploads the installable plugin as the release asset.
+
+The release is aborted automatically if the requested version does not match the project metadata or if any validation/build step fails.
 
 ## Changelog
 
