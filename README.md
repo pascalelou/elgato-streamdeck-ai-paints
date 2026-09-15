@@ -43,12 +43,20 @@ GitHub Releases are published by the **Publish Release** workflow.
 1. Update the version in `package.json` and the corresponding numeric version in `manifest.json`.
 2. Merge the version change into `main`.
 3. Open the repository's **Actions** tab and select **Publish Release**.
-4. Select **Run workflow**, enter the version (for example `2.0.0-alpha.1`), and choose whether it is a pre-release.
+4. Select **Run workflow**, enter the version (for example `2.0.0-rc.1`), and choose whether it is a pre-release.
 5. The workflow installs dependencies, runs typecheck, lint and tests, builds and validates the plugin, packages the `.streamDeckPlugin`, creates the Git tag and GitHub Release, generates release notes, and uploads the installable plugin as the release asset.
 
 The release is aborted automatically if the requested version does not match the project metadata or if any validation/build step fails.
 
 ## Changelog
+
+### 2.0.0-rc.1
+
+- Prepare the first release candidate for AI Paints V2.
+- Finalize repository links and release metadata.
+- Keep the modern TypeScript/Node.js Stream Deck SDK architecture unchanged.
+- Preserve compatibility with existing V1 keys, prompts, credentials and generated images.
+- No new user-facing features compared with 2.0.0-alpha.1.
 
 ### 2.0.0-alpha.1
 
