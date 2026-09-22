@@ -62,10 +62,61 @@ test("successful generation sets image, settings, state, and OK feedback", async
   const image = await subject.generateForAction(action.handle as never, { positivePrompt: "cat" });
   assert.equal(image, "data:image/jpeg;base64,/9j/AA==");
   assert.equal(action.saved[0]?.lastImage, image);
+  assert.equal(action.saved[0]?.lastResolvedPrompt, "cat");
+  assert.equal(action.saved[0]?.lastImageSeed, null);
   assert.equal(action.images[0], image);
   assert.equal(action.ok(), 1);
   assert.equal(subject.getState("button-1"), "success");
   assert.deepEqual(updates.map(({ update }) => update.state), ["generating", "success"]);
+});
+
+test("variation mode keeps the prompt and sends a fresh image seed", async () => {
+  let received: unknown;
+  const { subject } = createSubject({
+    randomSeed: () => 123,
+    imageService: { async generateImage(options) { received = options; return "image"; } }
+  });
+  const action = createAction();
+  await subject.generateForAction(action.handle as never, { mode: "variation", positivePrompt: "cat" });
+  assert.equal((received as { prompt: string; seed: number }).prompt, "cat");
+  assert.equal((received as { seed: number }).seed, 123);
+  assert.equal(action.saved[0]?.lastImageSeed, 123);
+});
+
+test("random AI generates a guided prompt before requesting the image and saves both seeds", async () => {
+  const order: string[] = [];
+  let imagePrompt = "";
+  const seeds = [101, 202];
+  const { subject } = createSubject({
+    randomSeed: () => seeds.shift() ?? 0,
+    textPromptService: { async generatePrompt(options) {
+      order.push("text");
+      assert.equal(options.category, "surreal");
+      assert.equal(options.userPrompt, "floating city");
+      assert.equal(options.seed, 101);
+      return { prompt: "A glass city floating over violet clouds", seed: options.seed ?? null };
+    } },
+    imageService: { async generateImage(options) { order.push("image"); imagePrompt = options.prompt; assert.equal(options.seed, 202); return "image"; } }
+  });
+  const action = createAction();
+  await subject.generateForAction(action.handle as never, { mode: "random-ai", randomCategory: "surreal", positivePrompt: "floating city" });
+  assert.deepEqual(order, ["text", "image"]);
+  assert.equal(imagePrompt, "A glass city floating over violet clouds");
+  assert.equal(action.saved[0]?.lastResolvedPrompt, imagePrompt);
+  assert.equal(action.saved[0]?.lastPromptSeed, 101);
+  assert.equal(action.saved[0]?.lastImageSeed, 202);
+});
+
+test("random AI text failure does not call the image service", async () => {
+  let imageCalls = 0;
+  const { subject } = createSubject({
+    textPromptService: { async generatePrompt() { throw new AppError("TEXT_GENERATION_FAILED", "Random prompt generation failed."); } },
+    imageService: { async generateImage() { imageCalls += 1; return "image"; } }
+  });
+  const action = createAction();
+  await subject.generateForAction(action.handle as never, { mode: "random-ai" });
+  assert.equal(imageCalls, 0);
+  assert.equal(action.alerts(), 1);
 });
 
 test("concurrent generation for one context is ignored while other contexts remain independent", async () => {

@@ -50,10 +50,33 @@ function showImage(image: string): void {
   view.onclick = () => window.open(`popup.html?image=${encodeURIComponent(image)}`, "GeneratedImage", "width=960,height=720,resizable=yes,scrollbars=yes");
 }
 
+function updateModeUi(): void {
+  const mode = byId<HTMLSelectElement>("mode").value;
+  byId<HTMLElement>("categoryRow").hidden = mode !== "random-ai";
+  byId<HTMLElement>("positivePromptLabel").textContent = mode === "random-ai" ? "Creative direction" : mode === "variation" ? "Base prompt" : "What to generate";
+  const help = byId<HTMLElement>("modeHelp");
+  help.textContent = mode === "random-ai"
+    ? "A text model will invent a new image prompt before generating the image."
+    : mode === "variation" ? "A new image seed will be used on each generation." : "";
+  help.hidden = !help.textContent;
+}
+
+function showGenerationDetails(settings: ActionSettings): void {
+  const container = byId<HTMLElement>("generationDetails");
+  container.hidden = !settings.lastResolvedPrompt && settings.lastPromptSeed === null && settings.lastImageSeed === null;
+  byId<HTMLElement>("resolvedPrompt").textContent = settings.lastResolvedPrompt || "—";
+  byId<HTMLElement>("promptSeed").textContent = `Prompt seed: ${settings.lastPromptSeed ?? "—"}`;
+  byId<HTMLElement>("imageSeed").textContent = `Image seed: ${settings.lastImageSeed ?? "—"}`;
+}
+
 function setFormSettings(settings: unknown): void {
   actionSettings = normalizeActionSettings(settings);
   byId<HTMLInputElement>("positivePrompt").value = actionSettings.positivePrompt;
   byId<HTMLInputElement>("negativePrompt").value = actionSettings.negativePrompt;
+  byId<HTMLSelectElement>("mode").value = actionSettings.mode;
+  byId<HTMLSelectElement>("randomCategory").value = actionSettings.randomCategory;
+  updateModeUi();
+  showGenerationDetails(actionSettings);
   showImage(actionSettings.lastImage);
 }
 
@@ -98,6 +121,10 @@ window.connectElgatoStreamDeckSocket = (port: string, uuid: string, registerEven
       actionSettings.lastImage = update.image;
       showImage(update.image);
     }
+    if (update.settings) {
+      actionSettings = normalizeActionSettings(update.settings);
+      showGenerationDetails(actionSettings);
+    }
   };
 };
 
@@ -110,18 +137,21 @@ declare global {
 document.addEventListener("DOMContentLoaded", () => {
   byId<HTMLInputElement>("cloudflareAccountId").addEventListener("change", saveCredentials);
   byId<HTMLInputElement>("cloudflareApiToken").addEventListener("change", saveCredentials);
+  byId<HTMLSelectElement>("mode").addEventListener("change", updateModeUi);
   byId<HTMLButtonElement>("github").addEventListener("click", () => send("openUrl", { url: "https://github.com/pascalelou/elgato-streamdeck-ai-paints" }));
   byId<HTMLButtonElement>("generate").addEventListener("click", () => {
     const credentials = readCredentials();
     const positivePrompt = byId<HTMLInputElement>("positivePrompt").value.trim();
     const negativePrompt = byId<HTMLInputElement>("negativePrompt").value.trim();
+    const mode = byId<HTMLSelectElement>("mode").value;
+    const randomCategory = byId<HTMLSelectElement>("randomCategory").value;
     if (!credentials.cloudflareAccountId || !credentials.cloudflareApiToken) return setStatus("Cloudflare credentials missing.");
-    if (!positivePrompt) return setStatus("Prompt is required.");
+    if (mode !== "random-ai" && !positivePrompt) return setStatus("Prompt is required.");
 
-    actionSettings = { ...actionSettings, positivePrompt, negativePrompt };
+    actionSettings = normalizeActionSettings({ ...actionSettings, positivePrompt, negativePrompt, mode, randomCategory });
     send("setSettings", actionSettings);
     send("setGlobalSettings", credentials);
-    send("sendToPlugin", { type: "generate", positivePrompt, negativePrompt }, ACTION_UUID);
+    send("sendToPlugin", { type: "generate", positivePrompt, negativePrompt, mode, randomCategory }, ACTION_UUID);
     setGenerating(true);
     setStatus("Generating image...");
   });

@@ -33,7 +33,7 @@ test("request uses the fixed model and multipart prompt fields", async () => {
     request = { url: String(url), init };
     return success();
   } });
-  await service.generateImage({ prompt: "red stopwatch", negativePrompt: "text", credentials });
+  await service.generateImage({ prompt: "red stopwatch", negativePrompt: "text", credentials, seed: 42 });
   assert.equal(request?.url, `https://api.cloudflare.com/client/v4/accounts/test-account/ai/run/${MODEL}`);
   assert.equal(request?.init?.method, "POST");
   assert.equal((request?.init?.headers as Record<string, string>).Authorization, "Bearer test-token");
@@ -41,6 +41,7 @@ test("request uses the fixed model and multipart prompt fields", async () => {
   assert.equal(body.get("prompt"), "red stopwatch\n\nAvoid: text");
   assert.equal(body.get("width"), "512");
   assert.equal(body.get("height"), "512");
+  assert.equal(body.get("seed"), "42");
 });
 
 for (const [name, status, code] of [
