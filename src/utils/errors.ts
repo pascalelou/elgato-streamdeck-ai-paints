@@ -6,6 +6,9 @@ export const USER_MESSAGES = Object.freeze({
   network: "Unable to reach Cloudflare Workers AI.",
   timeout: "Cloudflare image generation timed out.",
   invalidResponse: "Cloudflare returned no image.",
+  textFailed: "Random prompt generation failed.",
+  textTimeout: "Random prompt generation timed out.",
+  textInvalidResponse: "Cloudflare returned no usable random prompt.",
   generic: "Cloudflare image generation failed."
 });
 

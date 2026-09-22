@@ -14,6 +14,7 @@ export type GenerateImageOptions = {
   negativePrompt?: string;
   credentials: Credentials;
   signal?: AbortSignal;
+  seed?: number;
 };
 
 type ServiceOptions = {
@@ -50,6 +51,7 @@ export class CloudflareImageService {
     formData.append("prompt", prompt);
     formData.append("width", String(IMAGE_WIDTH));
     formData.append("height", String(IMAGE_HEIGHT));
+    if (options.seed !== undefined) formData.append("seed", String(options.seed));
     const url = `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(accountId)}/ai/run/${MODEL}`;
 
     this.logger.info("Request started", { model: MODEL });

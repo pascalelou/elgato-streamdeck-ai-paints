@@ -9,8 +9,8 @@
     body { margin: 0; color: #ddd; background: #2d2d2d; }
     main { padding: 12px; }
     label { display: grid; grid-template-columns: 112px 1fr; align-items: center; gap: 8px; margin: 8px 0; }
-    input, button { min-width: 0; box-sizing: border-box; border: 1px solid #555; border-radius: 3px; color: #eee; background: #3b3b3b; padding: 6px 8px; }
-    input:focus, button:focus-visible { outline: 2px solid #2d7ff9; outline-offset: 1px; }
+    input, select, button { min-width: 0; box-sizing: border-box; border: 1px solid #555; border-radius: 3px; color: #eee; background: #3b3b3b; padding: 6px 8px; }
+    input:focus, select:focus, button:focus-visible { outline: 2px solid #2d7ff9; outline-offset: 1px; }
     button { cursor: pointer; }
     button:hover:not(:disabled) { background: #4a4a4a; }
     button:disabled { cursor: wait; opacity: .6; }
@@ -23,19 +23,30 @@
     summary { cursor: pointer; }
     a, .link { color: #74a9ff; background: transparent; border: 0; padding: 0; }
     [hidden] { display: none !important; }
+    .help, .result { color: #bbb; line-height: 1.4; }
+    .result { overflow-wrap: anywhere; border-top: 1px solid #555; margin-top: 12px; padding-top: 10px; }
   </style>
 </head>
 <body>
   <main>
     <label><span>Cloudflare Account ID</span><input id="cloudflareAccountId" autocomplete="off" placeholder="Enter your Account ID"></label>
     <label><span>Cloudflare API Token</span><input id="cloudflareApiToken" type="password" autocomplete="off" placeholder="Enter your API token"></label>
-    <label><span>What to generate</span><input id="positivePrompt"></label>
+    <label><span>Generation mode</span><select id="mode"><option value="prompt">Prompt</option><option value="variation">Variation</option><option value="random-ai">Random AI</option></select></label>
+    <label id="categoryRow" hidden><span>Random category</span><select id="randomCategory"><option value="everything">Everything</option><option value="landscape">Landscape</option><option value="animals">Animals</option><option value="sci-fi">Sci-fi</option><option value="fantasy">Fantasy</option><option value="architecture">Architecture</option><option value="abstract">Abstract</option><option value="cute">Cute</option><option value="dark">Dark</option><option value="surreal">Surreal</option></select></label>
+    <label><span id="positivePromptLabel">What to generate</span><input id="positivePrompt"></label>
     <label><span>What to exclude</span><input id="negativePrompt"></label>
+    <p class="help" id="modeHelp" hidden></p>
     <button class="primary" id="generate" type="button">Generate</button>
     <div id="currentText" role="status" aria-live="polite" hidden></div>
     <div class="preview">
       <img id="currentImage" alt="Last generated image" hidden>
       <button id="viewImage" type="button" hidden>View Image</button>
+    </div>
+    <div class="result" id="generationDetails" hidden>
+      <strong>Resolved prompt</strong>
+      <p id="resolvedPrompt"></p>
+      <div id="promptSeed"></div>
+      <div id="imageSeed"></div>
     </div>
     <details>
       <summary>Instructions</summary>

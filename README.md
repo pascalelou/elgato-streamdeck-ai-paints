@@ -2,7 +2,19 @@
 
 AI Paints generates a new image from a prompt when you click **Generate** in the Property Inspector or press its Stream Deck key. Version 2 uses Elgato's modern TypeScript/Node.js SDK and calls Cloudflare Workers AI directly—no local service or intermediary image-generation server is required.
 
-The fixed model is `@cf/black-forest-labs/flux-2-klein-4b`, and images are generated at 512 × 512 pixels.
+The image model is `@cf/black-forest-labs/flux-2-klein-4b`, and images are generated at 512 × 512 pixels. Random AI uses `@cf/meta/llama-3.1-8b-instruct-fast` to create its image prompt first.
+
+## Generation modes
+
+Each AI Paints key has three generation modes:
+
+- **Prompt** — use this when you want full manual control. The text you enter is sent to FLUX.
+- **Variation** — use this for multiple versions of the same idea. AI Paints keeps the base prompt and chooses a new image seed for every generation.
+- **Random AI** — use this when you want the plugin to invent a fresh prompt before generating the image. You may select a category and enter an optional creative direction; the text model turns that guidance into one concise English image prompt, then FLUX generates the image with a new seed.
+
+The Property Inspector shows the last prompt actually sent to FLUX and its prompt/image seeds. Existing V1 and V2 keys default to **Prompt**, so upgrading does not alter their behavior, prompts, or saved image.
+
+Random AI makes two Workers AI requests instead of one. It can therefore take longer, consumes quota for both text and image inference, and depends on the additional Cloudflare text model being available to the account.
 
 ## Installation
 
@@ -16,7 +28,7 @@ Download the latest `.streamDeckPlugin` package from the repository's **Releases
 4. Create a token with Cloudflare's **Workers AI API Token** template. For a custom token, Cloudflare's current REST API guide requires only **Workers AI - Read** and **Workers AI - Edit**; scope both permissions to the relevant account.
 5. Add AI Paints to a Stream Deck key and open its Property Inspector.
 6. Enter the Account ID and token. These credentials are stored in Stream Deck Global Settings and shared by all AI Paints keys.
-7. Enter a prompt, optionally enter content to avoid, and click **Generate**.
+7. Select a generation mode, enter a prompt or optional Random AI direction, optionally enter content to avoid, and click **Generate**.
 
 Each key keeps its own prompts and last generated image in its action settings. After Stream Deck restarts, AI Paints restores that image without making a new API request. Pressing the key generates a fresh image.
 
@@ -49,6 +61,13 @@ GitHub Releases are published by the **Publish Release** workflow.
 The release is aborted automatically if the requested version does not match the project metadata or if any validation/build step fails.
 
 ## Changelog
+
+### 2.1.0
+
+- Add Prompt, Variation, and Random AI generation modes.
+- Generate guided random prompts with Cloudflare Workers AI before image generation.
+- Preserve and display the resolved prompt and prompt/image seeds in the Property Inspector.
+- Preserve compatibility with existing V1 and V2 keys.
 
 ### 2.0.0-rc.1
 
