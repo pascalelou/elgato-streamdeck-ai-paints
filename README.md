@@ -62,6 +62,13 @@ The release is aborted automatically if the requested version does not match the
 
 ## Changelog
 
+### 2.1.0
+
+- Add Prompt, Variation, and Random AI generation modes.
+- Generate guided random prompts with Cloudflare Workers AI before image generation.
+- Preserve and display the resolved prompt and prompt/image seeds in the Property Inspector.
+- Preserve compatibility with existing V1 and V2 keys.
+
 ### 2.0.0-rc.1
 
 - Prepare the first release candidate for AI Paints V2.
