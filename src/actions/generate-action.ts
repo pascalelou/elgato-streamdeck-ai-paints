@@ -1,3 +1,4 @@
+import { isRepeatedPrompt, normalizeRandomPrompt, randomInputSignature, rememberPrompt, RANDOM_MAX_ATTEMPTS } from "../services/random-prompt";
 import streamDeck, {
   action,
   type DialUpEvent,
@@ -36,7 +37,7 @@ type GenerateActionOptions = {
   randomSeed?: () => number;
 };
 
-type GenerateMessage = { type?: unknown; positivePrompt?: unknown; negativePrompt?: unknown; mode?: unknown; randomCategory?: unknown };
+type GenerateMessage = { type?: unknown; positivePrompt?: unknown; negativePrompt?: unknown; mode?: unknown; randomCategory?: unknown; randomCreativity?: unknown };
 
 type ResolvedGeneration = { finalPrompt: string; imageSeed: number | null; promptSeed: number | null };
 
@@ -89,24 +90,26 @@ export class GenerateAction extends SingletonAction<ActionSettings> {
 
   override async onSendToPlugin(ev: SendToPluginEvent<JsonValue, ActionSettings>): Promise<void> {
     const payload = ev.payload && typeof ev.payload === "object" ? (ev.payload as GenerateMessage) : {};
-    if (payload.type !== "generate") return;
+    if (payload.type !== "generate" && payload.type !== "rerollPrompt") return;
+    if (this.getState(ev.action.id) === "generating") return;
     const current = normalizeActionSettings(ev.action.getSettings ? await ev.action.getSettings() : {});
     const incoming = normalizeActionSettings({
       ...current,
       ...(Object.hasOwn(payload, "positivePrompt") ? { positivePrompt: payload.positivePrompt } : {}),
       ...(Object.hasOwn(payload, "negativePrompt") ? { negativePrompt: payload.negativePrompt } : {}),
       ...(Object.hasOwn(payload, "mode") ? { mode: payload.mode } : {}),
-      ...(Object.hasOwn(payload, "randomCategory") ? { randomCategory: payload.randomCategory } : {})
+      ...(Object.hasOwn(payload, "randomCategory") ? { randomCategory: payload.randomCategory } : {}),
+      ...(Object.hasOwn(payload, "randomCreativity") ? { randomCreativity: payload.randomCreativity } : {})
     });
     await ev.action.setSettings(incoming);
-    await this.generateForAction(ev.action, incoming);
+    await this.generateForAction(ev.action, incoming, payload.type === "rerollPrompt");
   }
 
   getState(actionId: string): GenerationState {
     return this.states.get(actionId) ?? "idle";
   }
 
-  async generateForAction(actionHandle: ActionHandle, rawSettings?: unknown): Promise<string | null> {
+  async generateForAction(actionHandle: ActionHandle, rawSettings?: unknown, promptOnly = false): Promise<string | null> {
     const actionId = actionHandle.id;
     if (this.getState(actionId) === "generating") {
       this.logger.debug("Duplicate generation ignored", { actionId });
@@ -114,6 +117,7 @@ export class GenerateAction extends SingletonAction<ActionSettings> {
     }
 
     const settings = normalizeActionSettings(rawSettings ?? this.settingsByContext.get(actionId));
+    if (promptOnly && settings.mode !== "random-ai") return null;
     this.settingsByContext.set(actionId, settings);
     this.states.set(actionId, "generating");
     await this.notify(actionId, "generating", settings.mode === "random-ai" ? "Generating random prompt..." : "Generating image...");
@@ -126,7 +130,20 @@ export class GenerateAction extends SingletonAction<ActionSettings> {
         await withTimeout(this.getGlobalSettings(), this.settingsTimeoutMs, "SETTINGS_TIMEOUT")
       );
       const credentials = toCredentials(globalSettings);
-      const resolved = await this.resolveGeneration(settings, credentials, generationController.signal);
+      const resolved = await this.resolveGeneration(settings, credentials, generationController.signal, promptOnly);
+      if (generationController.signal.aborted) throw new AppError("GENERATION_TIMEOUT", "Generation timed out.");
+      if (promptOnly) {
+        const updated = {
+          ...settings,
+          randomHistory: rememberPrompt(settings.randomHistory, resolved.finalPrompt),
+          randomDraft: { prompt: resolved.finalPrompt, seed: resolved.promptSeed, signature: randomInputSignature(settings) }
+        };
+        await actionHandle.setSettings(updated);
+        this.settingsByContext.set(actionId, updated);
+        this.states.set(actionId, "success");
+        await this.notify(actionId, "success", "Prompt ready. Reroll or Generate the image.", null, undefined, updated);
+        return resolved.finalPrompt;
+      }
       this.logger.info("Image request started", { actionId, mode: settings.mode, seeded: resolved.imageSeed !== null });
       const image = await this.imageService.generateImage({
         prompt: resolved.finalPrompt,
@@ -141,6 +158,8 @@ export class GenerateAction extends SingletonAction<ActionSettings> {
 
       const updated = {
         ...settings,
+        randomHistory: settings.mode === "random-ai" ? rememberPrompt(settings.randomHistory, resolved.finalPrompt) : settings.randomHistory,
+        randomDraft: null,
         lastImage: image,
         lastResolvedPrompt: resolved.finalPrompt,
         lastPromptSeed: resolved.promptSeed,
@@ -168,28 +187,49 @@ export class GenerateAction extends SingletonAction<ActionSettings> {
     }
   }
 
-  private async resolveGeneration(settings: ActionSettings, credentials: Credentials, signal: AbortSignal): Promise<ResolvedGeneration> {
+  private async resolveGeneration(settings: ActionSettings, credentials: Credentials, signal: AbortSignal, promptOnly = false): Promise<ResolvedGeneration> {
     this.logger.debug("Mode resolved", { mode: settings.mode });
     if (settings.mode === "prompt") return { finalPrompt: settings.positivePrompt, imageSeed: null, promptSeed: null };
     if (settings.mode === "variation") {
       return { finalPrompt: settings.positivePrompt, imageSeed: this.createRandomSeed(), promptSeed: null };
     }
 
-    const promptSeed = this.createRandomSeed();
-    const generated = await this.textPromptService.generatePrompt({
-      category: settings.randomCategory,
-      userPrompt: settings.positivePrompt,
-      negativePrompt: settings.negativePrompt,
-      credentials,
-      signal,
-      seed: promptSeed
-    });
-    return { finalPrompt: generated.prompt, promptSeed: generated.seed, imageSeed: this.createRandomSeed() };
+    if (!promptOnly && settings.randomDraft?.signature === randomInputSignature(settings)) {
+      return { finalPrompt: settings.randomDraft.prompt, promptSeed: settings.randomDraft.seed, imageSeed: this.createRandomSeed() };
+    }
+    let history = settings.randomHistory;
+    for (let attempt = 0; attempt < RANDOM_MAX_ATTEMPTS; attempt += 1) {
+      if (signal.aborted) throw new AppError("GENERATION_TIMEOUT", "Generation timed out.");
+      const promptSeed = this.createRandomSeed();
+      let generated: GeneratedPromptResult;
+      try {
+        generated = await this.textPromptService.generatePrompt({
+          category: settings.randomCategory,
+          creativity: settings.randomCreativity,
+          recentPrompts: history,
+          userPrompt: settings.positivePrompt,
+          negativePrompt: settings.negativePrompt,
+          credentials, signal, seed: promptSeed
+        });
+      } catch (error) {
+        if (error instanceof AppError && error.code === "TEXT_INVALID_RESPONSE") continue;
+        throw error;
+      }
+      const prompt = normalizeRandomPrompt(generated.prompt);
+      if (!prompt) continue;
+      if (isRepeatedPrompt(prompt, history)) {
+        history = rememberPrompt(history, prompt);
+        continue;
+      }
+      return { finalPrompt: prompt, promptSeed: generated.seed, imageSeed: promptOnly ? null : this.createRandomSeed() };
+    }
+    throw new AppError("RANDOM_PROMPT_EXHAUSTED", "Unable to create a valid, distinct prompt after three attempts. Please reroll or adjust the creative direction.");
   }
 
   private async restore(actionHandle: ActionHandle, rawSettings: unknown): Promise<void> {
     const settings = normalizeActionSettings(rawSettings);
     this.settingsByContext.set(actionHandle.id, settings);
+    if (this.getState(actionHandle.id) === "generating") return;
     this.states.set(actionHandle.id, "idle");
     if (settings.lastImage) await actionHandle.setImage(settings.lastImage);
   }

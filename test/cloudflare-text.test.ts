@@ -46,3 +46,18 @@ test("HTTP, network, and timeout failures have text-specific error codes", async
 test("prompt cleanup removes common model wrappers", () => {
   assert.equal(cleanPrompt("```text\nFinal prompt: \"A vivid red fox\"\n```"), "A vivid red fox");
 });
+
+test("LLM receives all visual dimensions, creativity and bounded concept history", async () => {
+  for (const [creativity, temperature] of [["low", 0.65], ["balanced", 1], ["high", 1.25]] as const) {
+    const service = new CloudflareTextPromptService({ fetchImpl: async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      assert.equal(body.temperature, temperature);
+      for (const dimension of ["subject", "environment", "composition", "mood", "style", "framing", "lighting"]) {
+        assert.ok(body.messages[0].content.includes(dimension));
+      }
+      assert.match(body.messages[1].content, /copper whale/);
+      return Response.json({ result: { response: "A paper castle in the snowy mountains" } });
+    } });
+    await service.generatePrompt({ ...options, creativity, recentPrompts: ["A copper whale in an orbital garden"] });
+  }
+});

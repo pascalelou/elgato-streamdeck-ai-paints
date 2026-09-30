@@ -12,12 +12,19 @@ export type RandomCategory =
   | "dark"
   | "surreal";
 
+export type RandomCreativity = "low" | "balanced" | "high";
+
+export type RandomDraft = { prompt: string; seed: number | null; signature: string };
+
 export type ActionSettings = {
   positivePrompt: string;
   negativePrompt: string;
   lastImage: string;
   mode: GenerationMode;
   randomCategory: RandomCategory;
+  randomCreativity: RandomCreativity;
+  randomHistory: string[];
+  randomDraft: RandomDraft | null;
   lastResolvedPrompt: string;
   lastPromptSeed: number | null;
   lastImageSeed: number | null;

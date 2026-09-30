@@ -1,3 +1,4 @@
+import { randomInputSignature } from "../services/random-prompt";
 import { normalizeActionSettings, normalizeGlobalSettings } from "../settings/normalize";
 import type { ActionSettings, GenerationUpdate, GlobalSettings } from "../settings/types";
 
@@ -30,7 +31,9 @@ function setStatus(message = "", details?: GenerationUpdate["details"]): void {
 }
 
 function setGenerating(generating: boolean): void {
-  byId<HTMLButtonElement>("generate").disabled = generating;
+  for (const id of ["generate", "rerollPrompt", "mode", "randomCategory", "randomCreativity", "positivePrompt", "negativePrompt"]) {
+    byId<HTMLInputElement | HTMLButtonElement | HTMLSelectElement>(id).disabled = generating;
+  }
   if (generationTimeout) clearTimeout(generationTimeout);
   if (generating) {
     generationTimeout = setTimeout(() => {
@@ -53,12 +56,29 @@ function showImage(image: string): void {
 function updateModeUi(): void {
   const mode = byId<HTMLSelectElement>("mode").value;
   byId<HTMLElement>("categoryRow").hidden = mode !== "random-ai";
+  byId<HTMLElement>("creativityRow").hidden = mode !== "random-ai";
+  byId<HTMLElement>("rerollPrompt").hidden = mode !== "random-ai";
+  showDraft();
   byId<HTMLElement>("positivePromptLabel").textContent = mode === "random-ai" ? "Creative direction" : mode === "variation" ? "Base prompt" : "What to generate";
   const help = byId<HTMLElement>("modeHelp");
   help.textContent = mode === "random-ai"
-    ? "A text model will invent a new image prompt before generating the image."
+    ? "Invent a prompt with Reroll, review it, then Generate. Generate also invents a prompt when none is prepared."
     : mode === "variation" ? "A new image seed will be used on each generation." : "";
   help.hidden = !help.textContent;
+}
+
+function showDraft(): void {
+  const current = normalizeActionSettings({
+    ...actionSettings,
+    mode: byId<HTMLSelectElement>("mode").value,
+    randomCategory: byId<HTMLSelectElement>("randomCategory").value,
+    randomCreativity: byId<HTMLSelectElement>("randomCreativity").value,
+    positivePrompt: byId<HTMLInputElement>("positivePrompt").value,
+    negativePrompt: byId<HTMLInputElement>("negativePrompt").value
+  });
+  const draft = current.randomDraft;
+  byId<HTMLElement>("draftDetails").hidden = current.mode !== "random-ai" || !draft || draft.signature !== randomInputSignature(current);
+  byId<HTMLElement>("draftPrompt").textContent = draft?.prompt ?? "";
 }
 
 function showGenerationDetails(settings: ActionSettings): void {
@@ -75,6 +95,7 @@ function setFormSettings(settings: unknown): void {
   byId<HTMLInputElement>("negativePrompt").value = actionSettings.negativePrompt;
   byId<HTMLSelectElement>("mode").value = actionSettings.mode;
   byId<HTMLSelectElement>("randomCategory").value = actionSettings.randomCategory;
+  byId<HTMLSelectElement>("randomCreativity").value = actionSettings.randomCreativity;
   updateModeUi();
   showGenerationDetails(actionSettings);
   showImage(actionSettings.lastImage);
@@ -124,6 +145,7 @@ window.connectElgatoStreamDeckSocket = (port: string, uuid: string, registerEven
     if (update.settings) {
       actionSettings = normalizeActionSettings(update.settings);
       showGenerationDetails(actionSettings);
+      showDraft();
     }
   };
 };
@@ -139,20 +161,25 @@ document.addEventListener("DOMContentLoaded", () => {
   byId<HTMLInputElement>("cloudflareApiToken").addEventListener("change", saveCredentials);
   byId<HTMLSelectElement>("mode").addEventListener("change", updateModeUi);
   byId<HTMLButtonElement>("github").addEventListener("click", () => send("openUrl", { url: "https://github.com/pascalelou/elgato-streamdeck-ai-paints" }));
-  byId<HTMLButtonElement>("generate").addEventListener("click", () => {
+  for (const id of ["randomCategory", "randomCreativity", "positivePrompt", "negativePrompt"]) {
+    byId<HTMLElement>(id).addEventListener("input", showDraft);
+  }
+  const requestGeneration = (type: "generate" | "rerollPrompt") => {
     const credentials = readCredentials();
     const positivePrompt = byId<HTMLInputElement>("positivePrompt").value.trim();
     const negativePrompt = byId<HTMLInputElement>("negativePrompt").value.trim();
     const mode = byId<HTMLSelectElement>("mode").value;
     const randomCategory = byId<HTMLSelectElement>("randomCategory").value;
+    const randomCreativity = byId<HTMLSelectElement>("randomCreativity").value;
     if (!credentials.cloudflareAccountId || !credentials.cloudflareApiToken) return setStatus("Cloudflare credentials missing.");
     if (mode !== "random-ai" && !positivePrompt) return setStatus("Prompt is required.");
 
-    actionSettings = normalizeActionSettings({ ...actionSettings, positivePrompt, negativePrompt, mode, randomCategory });
-    send("setSettings", actionSettings);
+    actionSettings = normalizeActionSettings({ ...actionSettings, positivePrompt, negativePrompt, mode, randomCategory, randomCreativity });
     send("setGlobalSettings", credentials);
-    send("sendToPlugin", { type: "generate", positivePrompt, negativePrompt, mode, randomCategory }, ACTION_UUID);
+    send("sendToPlugin", { type, positivePrompt, negativePrompt, mode, randomCategory, randomCreativity }, ACTION_UUID);
     setGenerating(true);
-    setStatus("Generating image...");
-  });
+    setStatus(type === "rerollPrompt" ? "Inventing a new prompt..." : "Generating image...");
+  };
+  byId<HTMLButtonElement>("generate").addEventListener("click", () => requestGeneration("generate"));
+  byId<HTMLButtonElement>("rerollPrompt").addEventListener("click", () => requestGeneration("rerollPrompt"));
 });

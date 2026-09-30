@@ -1,3 +1,4 @@
+import { normalizeHistory, normalizeDraft } from "../services/random-prompt";
 import type { ActionSettings, Credentials, GenerationMode, GlobalSettings, LegacyActionSettings, RandomCategory } from "./types";
 
 const MODES = new Set<GenerationMode>(["prompt", "variation", "random-ai"]);
@@ -21,6 +22,9 @@ export function normalizeActionSettings(value: unknown): ActionSettings {
     lastImage: text(settings.lastImage) || text(settings.base64Image),
     mode: MODES.has(settings.mode as GenerationMode) ? settings.mode as GenerationMode : "prompt",
     randomCategory: CATEGORIES.has(settings.randomCategory as RandomCategory) ? settings.randomCategory as RandomCategory : "everything",
+    randomCreativity: settings.randomCreativity === "low" || settings.randomCreativity === "high" ? settings.randomCreativity : "balanced",
+    randomHistory: normalizeHistory(settings.randomHistory),
+    randomDraft: normalizeDraft(settings.randomDraft),
     lastResolvedPrompt: text(settings.lastResolvedPrompt),
     lastPromptSeed: nullableSeed(settings.lastPromptSeed),
     lastImageSeed: nullableSeed(settings.lastImageSeed)

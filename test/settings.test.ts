@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { normalizeActionSettings, normalizeGlobalSettings, toCredentials } from "../src/settings/normalize";
 
-const defaults = { mode: "prompt", randomCategory: "everything", lastResolvedPrompt: "", lastPromptSeed: null, lastImageSeed: null } as const;
+const defaults = { mode: "prompt", randomCategory: "everything", lastResolvedPrompt: "", lastPromptSeed: null, lastImageSeed: null, randomCreativity: "balanced", randomHistory: [], randomDraft: null } as const;
 
 test("V1 action settings migrate to V2 names", () => {
   assert.deepEqual(normalizeActionSettings({ positive: " cat ", negative: " blur ", base64Image: " data:image/jpeg;base64,eA== " }), {
@@ -31,7 +31,7 @@ test("absent and partial settings normalize safely", () => {
 test("generation settings accept valid values and reject invalid values", () => {
   assert.deepEqual(normalizeActionSettings({ mode: "random-ai", randomCategory: "surreal", lastResolvedPrompt: " dream ", lastPromptSeed: 12, lastImageSeed: 34 }), {
     positivePrompt: "", negativePrompt: "", lastImage: "", mode: "random-ai", randomCategory: "surreal",
-    lastResolvedPrompt: "dream", lastPromptSeed: 12, lastImageSeed: 34
+    lastResolvedPrompt: "dream", lastPromptSeed: 12, lastImageSeed: 34, randomCreativity: "balanced", randomHistory: [], randomDraft: null
   });
   const invalid = normalizeActionSettings({ mode: "unknown", randomCategory: "nope", lastPromptSeed: -1, lastImageSeed: 1.2 });
   assert.equal(invalid.mode, "prompt");

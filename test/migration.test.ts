@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { normalizeActionSettings, normalizeGlobalSettings } from "../src/settings/normalize";
 
-const defaults = { mode: "prompt", randomCategory: "everything", lastResolvedPrompt: "", lastPromptSeed: null, lastImageSeed: null } as const;
+const defaults = { mode: "prompt", randomCategory: "everything", lastResolvedPrompt: "", lastPromptSeed: null, lastImageSeed: null, randomCreativity: "balanced", randomHistory: [], randomDraft: null } as const;
 
 test("migration case A: configured V1 key without an image", () => {
   assert.deepEqual(normalizeActionSettings({ positive: "cat", negative: "blur" }), {

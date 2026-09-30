@@ -183,3 +183,138 @@ test("Property Inspector message persists prompts and generates", async () => {
   assert.equal(action.saved[0]?.positivePrompt, "cat");
   assert.equal(action.saved.at(-1)?.lastImage, "data:image/jpeg;base64,/9j/AA==");
 });
+
+test("reroll persists a draft without touching the image, and generation consumes it once", async () => {
+  let textCalls = 0;
+  let imageCalls = 0;
+  const prompt = "A copper whale swimming through an orbital garden";
+  const { subject, updates } = createSubject({
+    textPromptService: { async generatePrompt(options) { textCalls++; return { prompt, seed: options.seed ?? null }; } },
+    imageService: { async generateImage(options) { imageCalls++; assert.equal(options.prompt, prompt); return "new-image"; } }
+  });
+  const action = createAction();
+  await subject.onSendToPlugin({ action: action.handle, payload: { type: "rerollPrompt", mode: "random-ai" } } as never);
+  const draftSettings = action.saved.at(-1)!;
+  assert.equal(draftSettings.randomDraft?.prompt, prompt);
+  assert.deepEqual(draftSettings.randomHistory, [prompt]);
+  assert.equal(draftSettings.lastResolvedPrompt, "");
+  assert.equal(imageCalls, 0);
+  assert.equal(action.images.length, 0);
+  assert.equal(updates.at(-1)?.update.settings?.randomDraft?.prompt, prompt);
+  // A fresh backend instance can use the persisted preview after a restart.
+  const restarted = createSubject({
+    textPromptService: { async generatePrompt() { throw new Error("draft must be reused"); } },
+    imageService: { async generateImage(options) { imageCalls++; assert.equal(options.prompt, prompt); return "new-image"; } }
+  }).subject;
+  await restarted.generateForAction(action.handle as never, draftSettings);
+  assert.equal(textCalls, 1);
+  assert.equal(imageCalls, 1);
+  assert.equal(action.saved.at(-1)?.randomDraft, null);
+});
+
+test("reroll avoids previous drafts, retries a repeated scene, and supplies history to the LLM", async () => {
+  const previous = "A copper whale swimming through an orbital garden";
+  const fresh = "A paper castle perched upon a snow covered mountain";
+  let calls = 0;
+  const { subject } = createSubject({ textPromptService: { async generatePrompt(options) {
+    assert.deepEqual(options.recentPrompts, [previous]);
+    assert.equal(options.creativity, "high");
+    calls++;
+    return { prompt: calls === 1 ? previous : fresh, seed: options.seed ?? null };
+  } } });
+  const action = createAction();
+  await subject.generateForAction(action.handle as never, { mode: "random-ai", randomCreativity: "high", randomHistory: [previous] }, true);
+  assert.equal(calls, 2);
+  assert.equal(action.saved.at(-1)?.randomDraft?.prompt, fresh);
+});
+
+test("invalid or repeated prompts exhaust a bounded retry budget without image generation", async () => {
+  for (const prompt of ["", "A copper whale swimming through an orbital garden"]) {
+    let calls = 0;
+    const { subject, updates } = createSubject({
+      textPromptService: { async generatePrompt() { calls++; return { prompt, seed: 1 }; } },
+      imageService: { async generateImage() { assert.fail("image must not be requested"); } }
+    });
+    const action = createAction();
+    await subject.generateForAction(action.handle as never, { mode: "random-ai", randomHistory: ["A copper whale swimming through an orbital garden"] });
+    assert.equal(calls, 3);
+    assert.equal(updates.at(-1)?.update.details?.code, "RANDOM_PROMPT_EXHAUSTED");
+    assert.equal(action.saved.length, 0);
+  }
+});
+
+test("changing random inputs invalidates a draft and successful images enter history", async () => {
+  const { normalizeActionSettings } = await import("../src/settings/normalize");
+  const { randomInputSignature } = await import("../src/services/random-prompt");
+  const settings = normalizeActionSettings({ mode: "random-ai", positivePrompt: "whale" });
+  const fresh = "A paper castle perched upon a snow covered mountain";
+  let calls = 0;
+  const { subject } = createSubject({ textPromptService: { async generatePrompt() { calls++; return { prompt: fresh, seed: 42 }; } } });
+  const action = createAction();
+  await subject.generateForAction(action.handle as never, {
+    ...settings, positivePrompt: "castle",
+    randomDraft: { prompt: "A copper whale swimming through an orbital garden", seed: 1, signature: randomInputSignature(settings) }
+  });
+  assert.equal(calls, 1);
+  assert.deepEqual(action.saved.at(-1)?.randomHistory, [fresh]);
+  assert.equal(action.saved.at(-1)?.randomDraft, null);
+});
+
+test("settings echoes cannot unlock a running reroll", async () => {
+  let complete: ((result: { prompt: string; seed: number }) => void) | undefined;
+  let calls = 0;
+  const { subject } = createSubject({ textPromptService: { async generatePrompt() {
+    calls++;
+    return new Promise(resolve => { complete = resolve; });
+  } } });
+  const action = createAction();
+  const pending = subject.generateForAction(action.handle as never, { mode: "random-ai" }, true);
+  while (!complete) await new Promise<void>(resolve => setImmediate(resolve));
+  await subject.onDidReceiveSettings({ action: action.handle, payload: { settings: { mode: "random-ai" } } } as never);
+  assert.equal(await subject.generateForAction(action.handle as never, { mode: "random-ai" }, true), null);
+  assert.equal(calls, 1);
+  complete({ prompt: "A copper whale swimming through an orbital garden", seed: 1 });
+  await pending;
+});
+
+test("invalid model responses retry before persisting an accepted prompt", async () => {
+  let calls = 0;
+  const { subject } = createSubject({ textPromptService: { async generatePrompt() {
+    calls++;
+    if (calls === 1) throw new AppError("TEXT_INVALID_RESPONSE", "Invalid prompt");
+    return { prompt: "A copper whale swimming through an orbital garden", seed: 4 };
+  } } });
+  const action = createAction();
+  await subject.generateForAction(action.handle as never, { mode: "random-ai" }, true);
+  assert.equal(calls, 2);
+  assert.ok(action.saved.at(-1)?.randomDraft);
+});
+
+test("image failure retains a prepared prompt and its history for retry", async () => {
+  const prompt = "A copper whale swimming through an orbital garden";
+  let calls = 0;
+  const { subject } = createSubject({
+    textPromptService: { async generatePrompt() { calls++; return { prompt, seed: 4 }; } },
+    imageService: { async generateImage() { throw new AppError("HTTP_ERROR", "Unavailable", 503); } }
+  });
+  const action = createAction();
+  await subject.generateForAction(action.handle as never, { mode: "random-ai" }, true);
+  const prepared = action.saved.at(-1)!;
+  await subject.generateForAction(action.handle as never, prepared);
+  assert.equal(calls, 1);
+  assert.equal(action.saved.at(-1)?.randomDraft?.prompt, prompt);
+  assert.deepEqual(action.saved.at(-1)?.randomHistory, [prompt]);
+});
+
+test("random history stays isolated per Stream Deck key", async () => {
+  const prompt = "A copper whale swimming through an orbital garden";
+  const { subject } = createSubject({ textPromptService: { async generatePrompt(options) {
+    assert.deepEqual(options.recentPrompts, []);
+    return { prompt, seed: 4 };
+  } } });
+  for (const id of ["one", "two"]) {
+    const action = createAction(id);
+    await subject.generateForAction(action.handle as never, { mode: "random-ai" }, true);
+    assert.deepEqual(action.saved.at(-1)?.randomHistory, [prompt]);
+  }
+});

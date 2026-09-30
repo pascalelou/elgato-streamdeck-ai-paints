@@ -10,11 +10,15 @@ Each AI Paints key has three generation modes:
 
 - **Prompt** — use this when you want full manual control. The text you enter is sent to FLUX.
 - **Variation** — use this for multiple versions of the same idea. AI Paints keeps the base prompt and chooses a new image seed for every generation.
-- **Random AI** — use this when you want the plugin to invent a fresh prompt before generating the image. You may select a category and enter an optional creative direction; the text model turns that guidance into one concise English image prompt, then FLUX generates the image with a new seed.
+- **Random AI** — use this when you want the plugin to invent a fresh prompt before generating the image. You may select a category, choose Low/Balanced/High creativity, and enter an optional creative direction. The LLM invents the subject, environment, composition, mood, style, framing and lighting; its output is normalized and validated before FLUX generates the image with a new seed. There is no predefined prompt list.
 
 The Property Inspector shows the last prompt actually sent to FLUX and its prompt/image seeds. Existing V1 and V2 keys default to **Prompt**, so upgrading does not alter their behavior, prompts, or saved image.
 
-Random AI makes two Workers AI requests instead of one. It can therefore take longer, consumes quota for both text and image inference, and depends on the additional Cloudflare text model being available to the account.
+Use **Reroll prompt only** to preview a new idea without generating an image. Reroll again to replace it, or choose **Generate** (or press the key) to generate exactly that prepared prompt. The prepared prompt survives a restart and is consumed after a successful image generation. Changing the direction, exclusions, category or creativity invalidates it; Generate then invents a fresh idea. A failed image request preserves a prepared prompt for retry.
+
+Each key retains at most 12 recent accepted prompts, including reroll previews, in its own settings. These concepts are sent to the LLM as exclusions. A local word-similarity check rejects repeated or slightly reworded scenes; invalid or repeated results trigger up to three text attempts, then report an error without requesting an image. This reduces frequent repeats, but does not guarantee detection of every semantic paraphrase. Existing keys retain their settings and gain an empty history by default.
+
+Random AI normally makes two Workers AI requests instead of one; retries can raise that to three text requests plus one image request. Reroll only uses text inference, and generating a prepared prompt only uses image inference. It can therefore take longer, consumes quota for both text and image inference, and depends on the additional Cloudflare text model being available to the account.
 
 ## Installation
 

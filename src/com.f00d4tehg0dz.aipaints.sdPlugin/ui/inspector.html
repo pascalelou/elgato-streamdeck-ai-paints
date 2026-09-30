@@ -33,9 +33,12 @@
     <label><span>Cloudflare API Token</span><input id="cloudflareApiToken" type="password" autocomplete="off" placeholder="Enter your API token"></label>
     <label><span>Generation mode</span><select id="mode"><option value="prompt">Prompt</option><option value="variation">Variation</option><option value="random-ai">Random AI</option></select></label>
     <label id="categoryRow" hidden><span>Random category</span><select id="randomCategory"><option value="everything">Everything</option><option value="landscape">Landscape</option><option value="animals">Animals</option><option value="sci-fi">Sci-fi</option><option value="fantasy">Fantasy</option><option value="architecture">Architecture</option><option value="abstract">Abstract</option><option value="cute">Cute</option><option value="dark">Dark</option><option value="surreal">Surreal</option></select></label>
+    <label id="creativityRow" hidden><span>Creativity</span><select id="randomCreativity"><option value="low">Low</option><option value="balanced" selected>Balanced</option><option value="high">High</option></select></label>
     <label><span id="positivePromptLabel">What to generate</span><input id="positivePrompt"></label>
     <label><span>What to exclude</span><input id="negativePrompt"></label>
     <p class="help" id="modeHelp" hidden></p>
+    <button id="rerollPrompt" type="button" hidden>Reroll prompt only</button>
+    <div class="result" id="draftDetails" hidden><strong>Prompt ready for generation</strong><p id="draftPrompt"></p></div>
     <button class="primary" id="generate" type="button">Generate</button>
     <div id="currentText" role="status" aria-live="polite" hidden></div>
     <div class="preview">
