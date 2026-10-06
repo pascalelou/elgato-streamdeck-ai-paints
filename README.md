@@ -66,6 +66,13 @@ The release is aborted automatically if the requested version does not match the
 
 ## Changelog
 
+### 2.2.0
+
+- Reroll and preview Random AI prompts before generating an image.
+- Add Low, Balanced, and High creativity levels for Random AI.
+- Keep recent prompt history per key to reduce repeated concepts, with validation and retries.
+- Preserve prepared prompts across restarts and failed image requests for retry.
+
 ### 2.1.0
 
 - Add Prompt, Variation, and Random AI generation modes.
