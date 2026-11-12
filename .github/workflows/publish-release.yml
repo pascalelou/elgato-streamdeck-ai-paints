@@ -22,6 +22,9 @@ jobs:
     if: github.ref_name == 'main'
     runs-on: windows-latest
 
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -37,7 +40,10 @@ jobs:
       - name: Verify requested version
         shell: pwsh
         run: |
-          $requested = "${{ inputs.version }}"
+          $requested = $env:RELEASE_VERSION
+          if ($requested -notmatch '^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$') {
+            throw "Invalid release version."
+          }
           $package = Get-Content package.json -Raw | ConvertFrom-Json
           $manifest = Get-Content "src/com.f00d4tehg0dz.aipaints.sdPlugin/manifest.json" -Raw | ConvertFrom-Json
 
@@ -102,10 +108,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${{ inputs.version }}" `
+          gh release create "$env:RELEASE_VERSION" `
             "Release/com.f00d4tehg0dz.aipaints.streamDeckPlugin#AI Paints Stream Deck plugin" `
             --target "$env:GITHUB_SHA" `
-            --title "Version ${{ inputs.version }} Release" `
+            --title "Version $env:RELEASE_VERSION Release" `
             --generate-notes `
             --prerelease
 
@@ -115,8 +121,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${{ inputs.version }}" `
+          gh release create "$env:RELEASE_VERSION" `
             "Release/com.f00d4tehg0dz.aipaints.streamDeckPlugin#AI Paints Stream Deck plugin" `
             --target "$env:GITHUB_SHA" `
-            --title "Version ${{ inputs.version }} Release" `
+            --title "Version $env:RELEASE_VERSION Release" `
             --generate-notes
