@@ -58,3 +58,7 @@ Traiter les dépendances runtime restantes en priorité et valider sur une copie
 
 @elgato/streamdeck 2.1.2 → 3.0.4
 Relevé npm outdated sans --include=dev : inventaire incomplet des outils de développement ; les avis de sécurité transitifs sont couverts séparément par npm audit.
+
+## Information GitHub complémentaire au push
+
+Le bandeau GitHub reçu lors du push annonce 3 vulnérabilité(s) sur la branche par défaut : 1 élevée, 2 faibles. Ce résumé ne donne ni tous les identifiants ni les chemins affectés ; les API détaillées restent interdites (403). Il ne reflète pas une réanalyse de cette branche de correction.
